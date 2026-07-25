@@ -21,11 +21,11 @@ supervisor rather than maintaining a parallel runtime.
 
 The npm package includes the official `@qvac/cli`. A separate global `qvac` installation is not required unless you select one with `--bin`.
 
-## What this adds to the official QVAC guide
+## What this adds to QVAC's OpenAI-compatible setup
 
-QVAC's Hermes guide is the authoritative manual setup and remains useful when
-you want to understand or control every layer. This community package automates
-that same supported OpenAI-compatible integration for a first-time user. It
+QVAC's [HTTP-server connection guide](https://docs.qvac.tether.io/cli/http-server/connection/)
+documents the authoritative manual OpenAI-compatible setup. This community
+package automates that supported integration for a first-time Hermes user. It
 adds download consent and disk checks, copied plugin installation, official
 catalog-to-config generation, loopback process supervision, readiness checks,
 Hermes environment wiring, cleanup, diagnostics, upgrades, and owned uninstall.
