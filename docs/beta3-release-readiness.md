@@ -33,7 +33,7 @@ A subsequent fast-profile run exercised the download boundary with 2.55 GiB of m
 
 ## Verification
 
-- TypeScript build and Vitest: 94 passed.
+- TypeScript build and Vitest: 95 passed.
 - Python unittest: 24 passed.
 - Type checking, formatting, and metadata verification: passed.
 - Packed npm consumer: install, public imports, beginner `start`, copied ownership, lifecycle, doctor, transport smoke, status/stop, and uninstall passed.

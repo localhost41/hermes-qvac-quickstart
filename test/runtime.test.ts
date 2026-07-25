@@ -486,6 +486,29 @@ describe("transport fixture", () => {
     expect(attempts).toBe(2);
   });
 
+  it("preserves a confirmed missing-model diagnosis at the timeout boundary", async () => {
+    let attempts = 0;
+    const fetchImpl = async () => {
+      attempts += 1;
+      if (attempts === 1)
+        return new Response('{"data":[{"id":"main"}]}', { status: 200 });
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError",
+      );
+    };
+    await expect(
+      waitForEndpointModels(
+        "http://127.0.0.1:1/v1",
+        ["main", "aux"],
+        20,
+        undefined,
+        fetchImpl,
+        () => new Promise((resolvePromise) => setTimeout(resolvePromise, 2)),
+      ),
+    ).rejects.toThrow("missing 'aux'");
+  });
+
   it("bounds captured Hermes process duration", async () => {
     const bin = await mkdtemp(join(tmpdir(), "hermes-qvac-hang-"));
     const hermes = join(bin, "hermes");

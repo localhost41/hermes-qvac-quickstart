@@ -1091,6 +1091,7 @@ export async function waitForEndpointModels(
 ): Promise<string[]> {
   const deadline = Date.now() + timeoutMs;
   let lastDetail = "the endpoint did not respond";
+  let lastMissingDetail: string | undefined;
   while (Date.now() < deadline) {
     const remaining = deadline - Date.now();
     try {
@@ -1103,14 +1104,17 @@ export async function waitForEndpointModels(
       const missing = requiredModels.filter((model) => !models.includes(model));
       if (missing.length === 0) return models;
       lastDetail = `missing ${missing.map((model) => `'${model}'`).join(", ")}`;
+      lastMissingDetail = lastDetail;
     } catch (error) {
-      lastDetail = error instanceof Error ? error.message : String(error);
+      const detail = error instanceof Error ? error.message : String(error);
+      if (!(lastMissingDetail && /abort|timeout/i.test(detail)))
+        lastDetail = detail;
     }
     const delay = Math.min(500, deadline - Date.now());
     if (delay > 0) await sleepImpl(delay);
   }
   throw new Error(
-    `models endpoint did not advertise required models within ${timeoutMs}ms: ${lastDetail}`,
+    `models endpoint did not advertise required models within ${timeoutMs}ms: ${lastMissingDetail ?? lastDetail}`,
   );
 }
 
