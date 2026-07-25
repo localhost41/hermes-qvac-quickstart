@@ -15,7 +15,8 @@ Current recommendation: **GO AS BETA WITH EXPLICIT UPSTREAM LIMITATIONS**.
 - The production audit discovered `find-my-way` 9.6.0 through QVAC CLI and now resolves patched 9.7.0 through a lockfile override.
 - Beta.2 also overrides newly disclosed vulnerable transitive releases of `@fastify/static` and `brace-expansion` with patched 10.1.1 and 5.0.8 respectively; publication remains gated on a clean high-severity production audit.
 - Packed macOS acceptance passed isolated install, copied setup, Hermes discovery, doctor, real OpenAI-compatible transport, idempotent upgrade, owned uninstall, and cleanup without using the source checkout at runtime.
-- The release artifact and SBOM are regenerated for beta.2 only after the patched lockfile and full test matrix pass from a clean commit.
+- The frozen beta.2 tarball contains 25 files, is 48,796 bytes packed and 179,055 bytes unpacked, and has SHA-256 `e6805136e10922f1256a3ec5e16b4e76e954a1d5ee93abcff8aa6c7b524d93be`.
+- The reproducible CycloneDX 1.6 beta.2 SBOM contains 272 components and has SHA-256 `30fdfd5895e31326836bacadd8b72b8fa92729b581cade59d497e240dc87c5ea`.
 
 ## Explicit limitations
 
