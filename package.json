@@ -1,6 +1,6 @@
 {
   "name": "@localhost41/hermes-qvac-provider",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "description": "Hermes Agent model-provider plugin for private, local QVAC models",
   "keywords": [
     "qvac",
@@ -79,7 +79,8 @@
     "@ai-sdk/openai-compatible": "^2.0.0",
     "@qvac/ai-sdk-provider": "^0.3.0",
     "@qvac/cli": "^0.8.1",
-    "ai": "^6.0.0"
+    "ai": "^6.0.0",
+    "require-asset": "1.2.2"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
@@ -93,5 +94,13 @@
     "example": "examples",
     "test": "tests"
   },
-  "author": ""
+  "author": "",
+  "optionalDependencies": {
+    "bare-runtime-darwin-arm64": "1.30.3",
+    "bare-runtime-darwin-x64": "1.30.3",
+    "bare-runtime-linux-arm64": "1.30.3",
+    "bare-runtime-linux-x64": "1.30.3",
+    "bare-runtime-win32-arm64": "1.30.3",
+    "bare-runtime-win32-x64": "1.30.3"
+  }
 }

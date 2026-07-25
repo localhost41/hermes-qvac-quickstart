@@ -1,0 +1,41 @@
+# Beta.3 release readiness
+
+Candidate package: `@localhost41/hermes-qvac-provider@0.1.0-beta.3`.
+
+Recommendation: **GO AS BETA WITH EXPLICIT LIMITATIONS**, subject to CI and the protected beta publish workflow. Do not move the npm `latest` tag.
+
+## Beginner outcome
+
+The public path is now `hermes-qvac start`. It performs capacity and cache checks, obtains consent before a required download, safely installs or upgrades the copied Hermes provider, starts the official managed QVAC provider, waits for both selected models, launches Hermes, and releases its managed session when Hermes exits.
+
+On 2026-07-25, isolated `HERMES_HOME` runs on macOS arm64, Node 26.3.0, Hermes 0.19.0, Python 3.11.15, QVAC CLI 0.8.1, and 16 GiB memory produced exact `OK` responses with both:
+
+- cached `qwen3.5-0.8b` plus `qwen3.5-2b` auxiliary;
+- the default cached `qwen3.5-9b` plus `qwen3.5-2b` auxiliary.
+
+Both runs installed an owned provider into an empty isolated Hermes home, reached QVAC readiness, invoked real Hermes, and left no managed QVAC process after completion.
+
+## Corrected findings
+
+- QVAC's Bare runtime could be present in pnpm's store but unusable because the platform package or its `require-asset` dependency was not resolvable. Desktop platform packages are now direct optional dependencies, the loader is explicit, and managed startup fails immediately with a useful reinstall message if resolution is incomplete.
+- The first-run reasoning default is now `0`. This matches the predictable no-hidden-reasoning setup used for the successful exact-response path; users may explicitly select `-1`.
+- Compatible official managed fleets may now be reused on a pinned port. Private `--no-reuse` starts retain the collision preflight.
+- The production dependency audit identified `@fastify/static` 10.1.1 as vulnerable; the override is now 10.1.2 and `pnpm audit --prod` reports no known vulnerabilities.
+
+## Verification
+
+- TypeScript build and Vitest: 89 passed.
+- Python unittest: 24 passed.
+- Type checking, formatting, and metadata verification: passed.
+- Packed npm consumer: install, public imports, beginner `start`, copied ownership, lifecycle, doctor, transport smoke, status/stop, and uninstall passed.
+- Live macOS arm64 inference: smallest cached model and advertised default passed with exact output.
+
+## Explicit limitations
+
+- Hermes must already be installed; the package does not own Hermes installation.
+- A first model run may download several GiB and take minutes. The CLI asks first and requires `--yes` in automation.
+- Model payload estimates are lower bounds and cannot guarantee sufficient runtime memory.
+- Native Windows is not claimed; Linux live validation remains a protected CI/release gate.
+- Session resume remains outside the advertised supported surface for the upstream reasons documented in the host-conformance report.
+- QVAC context-boundary and structured-output upstream defects remain visible and are not patched in this plugin.
+- This is an independent community integration, not an official or endorsed QVAC or Hermes component.

@@ -110,6 +110,10 @@ printf '{"private":true,"type":"module"}\n' >"$CONSUMER_DIR/package.json"
     --cache "$TMP_DIR/npm-cache" \
     "$TARBALL_PATH" >/dev/null
 )
+# Resolution is complete. Release the isolated npm cache before exercising the
+# real lifecycle disk preflight so this verifier does not create a false
+# low-disk failure itself.
+rm -rf "$TMP_DIR/npm-cache"
 
 INSTALLED_PACKAGE_DIR="$CONSUMER_DIR/node_modules/@localhost41/hermes-qvac-provider"
 if [[ ! -d "$INSTALLED_PACKAGE_DIR" ]]; then
@@ -210,6 +214,40 @@ const stop = () => server.close(() => process.exit(0));
 process.on("SIGINT", stop); process.on("SIGTERM", stop);
 EOF
 chmod +x "$CLI_BIN_DIR/qvac-fake.mjs"
+
+# Fake QVAC cannot consume model payloads. Sparse metadata-sized cache entries
+# keep the real storage preflight deterministic without downloading models.
+CLI_HOME="$TMP_DIR/cli-user-home"
+mkdir -p "$CLI_HOME/.qvac/models"
+(
+  cd "$CONSUMER_DIR"
+  HOME="$CLI_HOME" node --input-type=module <<'EOF'
+import { truncate, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { allModels, resolveModelConstant } from "@qvac/ai-sdk-provider/models";
+for (const id of ["qwen3.5-4b", "qwen3.5-2b"]) {
+  const metadata = allModels.find((model) => model.name === resolveModelConstant(id));
+  if (!metadata || typeof metadata.expectedSize !== "number") throw new Error(`Missing model metadata for ${id}`);
+  const path = join(process.env.HOME, ".qvac", "models", `package-verifier_${metadata.modelId}`);
+  await writeFile(path, "");
+  await truncate(path, metadata.expectedSize);
+}
+EOF
+)
+export HOME="$CLI_HOME"
+
+# Exercise the actual public beginner path from packed files in a fresh Hermes
+# home: consent, copied setup, managed QVAC, Hermes launch, and cleanup.
+CLI_START_HOME="$TMP_DIR/cli-start-hermes-home"
+(
+  cd "$CONSUMER_DIR"
+  PATH="$CLI_BIN_DIR:$PATH" HERMES_HOME="$CLI_START_HOME" CLI_HERMES_LOG="$CLI_HERMES_LOG" CLI_FAKE_INSTALL="$CLI_FAKE_INSTALL" FAKE_QVAC_CAPTURE="$TMP_DIR/start-qvac-config.json" \
+    ./node_modules/.bin/hermes-qvac start --model qwen3.5-4b --bin "$CLI_BIN_DIR/qvac-fake.mjs" --no-reuse --yes >/dev/null
+)
+if [[ ! -f "$CLI_START_HOME/plugins/model-providers/qvac/.hermes-qvac-provider.json" ]]; then
+  echo "Packed beginner start did not install its owned provider" >&2
+  exit 1
+fi
 
 (
   cd "$CONSUMER_DIR"

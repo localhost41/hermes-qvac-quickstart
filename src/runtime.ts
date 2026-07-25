@@ -49,6 +49,29 @@ export const PACKAGE_ROOT = resolve(
   "..",
 );
 
+export function assertBareRuntimePlatform(): string {
+  const key = `${process.platform}-${process.arch}`;
+  const packages: Record<string, string> = {
+    "darwin-arm64": "bare-runtime-darwin-arm64",
+    "darwin-x64": "bare-runtime-darwin-x64",
+    "linux-arm64": "bare-runtime-linux-arm64",
+    "linux-x64": "bare-runtime-linux-x64",
+    "win32-arm64": "bare-runtime-win32-arm64",
+    "win32-x64": "bare-runtime-win32-x64",
+  };
+  const packageName = packages[key];
+  if (!packageName) return key;
+  try {
+    createRequire(import.meta.url)(packageName);
+  } catch (error) {
+    throw new Error(
+      `QVAC cannot load its Bare runtime for ${key}. Reinstall @localhost41/hermes-qvac-provider with npm so optional platform dependencies are included (missing ${packageName} or one of its dependencies).`,
+      { cause: error },
+    );
+  }
+  return packageName;
+}
+
 export interface Output {
   json: boolean;
   write(value: unknown): void;
@@ -1139,12 +1162,15 @@ export async function doctor(
     detail: hermes ?? "not found",
   });
   const hermesVersion = hermes?.match(/Hermes Agent v([^\s]+)/)?.[1];
+  const fullyVerifiedHermesVersions = ["0.18.2", "0.19.0"];
   checks.push({
     name: "hermes-version",
-    ok: hermesVersion === "0.18.2",
+    ok:
+      hermesVersion !== undefined &&
+      fullyVerifiedHermesVersions.includes(hermesVersion),
     required: false,
     detail: hermesVersion
-      ? `detected ${hermesVersion}; fully verified baseline is 0.18.2`
+      ? `detected ${hermesVersion}; fully verified baselines are ${fullyVerifiedHermesVersions.join(" and ")}`
       : "version could not be parsed; ProviderProfile compatibility is checked separately",
   });
   const qvac = commandVersion("qvac", env);
@@ -1436,8 +1462,12 @@ export async function startManaged(
 async function startManagedSerialized(
   config: HermesQvacConfig,
 ): Promise<ManagedQvacProvider> {
+  assertBareRuntimePlatform();
   await modelStoragePreflight(config);
-  if (config.port !== undefined)
+  // A reusable pinned-port fleet may already own this port. Let the official
+  // manager decide whether to attach. Private starts cannot attach, so retain
+  // the clearer collision preflight for that path.
+  if (config.port !== undefined && !config.reuse)
     await assertPortAvailable(config.host, config.port);
   const previousCwd = process.cwd();
   if (config.cwd) process.chdir(config.cwd);

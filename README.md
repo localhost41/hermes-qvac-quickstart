@@ -9,21 +9,38 @@ The Python plugin makes `qvac` a real Hermes model provider. The `hermes-qvac` C
 ## Requirements
 
 - Node 22–26
-- Hermes Agent available as `hermes` (fully verified with 0.18.2)
+- Hermes Agent available as `hermes` (fully verified with 0.18.2 and 0.19.0)
 - Python 3.11–3.13 (normally supplied by Hermes)
 - Enough RAM and disk for the selected local model
 
 The npm package includes the official `@qvac/cli`. A separate global `qvac` installation is not required unless you select one with `--bin`.
 
+## What this adds to the official QVAC guide
+
+QVAC's Hermes guide is the authoritative manual setup and remains useful when
+you want to understand or control every layer. This community package automates
+that same supported OpenAI-compatible integration for a first-time user. It
+adds download consent and disk checks, copied plugin installation, official
+catalog-to-config generation, loopback process supervision, readiness checks,
+Hermes environment wiring, cleanup, diagnostics, upgrades, and owned uninstall.
+It does not replace QVAC or Hermes behavior, patch either upstream, or imply
+endorsement by either project.
+
 ## Install
 
-After installing the package:
+For a new local setup, install Hermes using its current official instructions,
+then run one command:
 
 ```bash
 npm install -g @localhost41/hermes-qvac-provider@beta
-hermes-qvac setup
-hermes-qvac doctor
+hermes-qvac start
 ```
+
+`start` checks available disk, shows the selected models and estimated download,
+asks before downloading anything, safely installs or upgrades the provider,
+starts QVAC on loopback, waits for it to become ready, and opens Hermes. On
+later runs it reuses cached models and repeats the safe installation check.
+Non-interactive automation must pass `--yes` to approve a required download.
 
 `setup` atomically copies the minimal Python assets into `$HERMES_HOME/plugins/model-providers/qvac` and enables the plugin through Hermes. It supports upgrades from owned and recognized earlier alpha installations, refuses unrelated directories, and never downloads a model.
 
@@ -35,7 +52,7 @@ pnpm build
 node dist/cli.js setup
 ```
 
-## First run
+## Advanced/manual lifecycle
 
 ```bash
 hermes-qvac run --model qwen3.5-9b -- --cli
@@ -56,6 +73,7 @@ Compatible sessions can share the official managed QVAC fleet. The CLI never kil
 ## Commands
 
 ```text
+hermes-qvac start [configuration options] [--yes] -- [Hermes arguments]
 hermes-qvac setup [configuration options]
 hermes-qvac config show [--json]
 hermes-qvac config set [configuration options]
@@ -75,6 +93,7 @@ hermes-qvac uninstall
 hermes-qvac version
 ```
 
+- `start` is the beginner path: consent, setup, managed QVAC, and Hermes in one command.
 - `run` holds QVAC while a child Hermes process runs.
 - `serve` holds QVAC in the foreground for separately launched clients.
 - `status` reports every managed CLI session in the active `HERMES_HOME` and checks the live endpoint.
@@ -93,7 +112,7 @@ See [configuration.md](docs/configuration.md) for every CLI option and environme
 - Auxiliary model: `qwen3.5-2b`
 - Context: 32768 tokens
 - Maximum output: 8192 tokens
-- Reasoning budget: `-1` (enabled)
+- Reasoning budget: `0` (disabled for predictable first-run output)
 - QVAC tool-call formatting: enabled
 - Bind: `127.0.0.1`, automatic free port
 - Startup/model-download timeout: 900 seconds

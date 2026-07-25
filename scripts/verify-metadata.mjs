@@ -9,7 +9,7 @@ const changelog = readFileSync("CHANGELOG.md", "utf8");
 const compatibility = readFileSync("docs/compatibility.md", "utf8");
 const configuration = readFileSync("docs/configuration.md", "utf8");
 const releaseReadiness = readFileSync(
-  "docs/beta2-release-readiness.md",
+  "docs/beta3-release-readiness.md",
   "utf8",
 );
 const betaReadiness = readFileSync("docs/beta-readiness-plan.md", "utf8");

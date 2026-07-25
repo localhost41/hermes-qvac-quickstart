@@ -147,7 +147,7 @@ describe("official managed lifecycle integration", () => {
           >;
         };
       };
-      const common = { ctx_size: 32768, reasoning_budget: -1, tools: true };
+      const common = { ctx_size: 32768, reasoning_budget: 0, tools: true };
       expect(config).toEqual({
         serve: {
           models: {
@@ -228,6 +228,36 @@ describe("official managed lifecycle integration", () => {
       );
     }
   }, 10_000);
+
+  it("reuses a compatible official fleet on an explicitly pinned port", async () => {
+    const allocator = createTcpServer();
+    await new Promise<void>((resolve) =>
+      allocator.listen(0, "127.0.0.1", resolve),
+    );
+    const address = allocator.address();
+    if (!address || typeof address === "string")
+      throw new Error("port allocator did not bind TCP");
+    await new Promise<void>((resolve, reject) =>
+      allocator.close((error) => (error ? reject(error) : resolve())),
+    );
+    const fake = await fakeQvac();
+    process.env.FAKE_QVAC_CAPTURE = fake.capture;
+    const base = {
+      ...DEFAULT_CONFIG,
+      qvacBin: fake.bin,
+      port: address.port,
+      reuse: true,
+      readyTimeoutMs: 3_000,
+    };
+    const first = await startManaged(base);
+    const second = await startManaged(base);
+    expect(second.port).toBe(address.port);
+    expect(second.pid).toBe(first.pid);
+    await first.close();
+    expect(processAlive(second.pid)).toBe(true);
+    await second.close();
+    await waitForExit(second.pid);
+  }, 15_000);
 
   it("waits through delayed readiness and surfaces early child exit", async () => {
     const delayed = await fakeQvac({ delayMs: 250 });
@@ -678,7 +708,7 @@ printf '{"class":"QvacProviderProfile","provider_profile":true,"name":"qvac","al
 if [[ "$1" == "--version" ]]; then
   printf 'Hermes Agent test\nInstall directory: ${fakeInstall}\n'
 elif [[ "$1 $2" == "plugins list" ]]; then
-  echo 'enabled user 0.1.0-beta.2 qvac'
+  echo 'enabled user 0.1.0-beta.3 qvac'
 else
   exit 0
 fi

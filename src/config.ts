@@ -56,7 +56,7 @@ export const DEFAULT_CONFIG: Readonly<HermesQvacConfig> = Object.freeze({
   host: "127.0.0.1",
   apiKey: "custom-local",
   ctxSize: 32768,
-  reasoningBudget: -1,
+  reasoningBudget: 0,
   tools: true,
   readyTimeoutMs: 900_000,
   idleStopMs: 0,

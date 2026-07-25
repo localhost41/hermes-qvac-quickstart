@@ -13,7 +13,7 @@ Precedence is CLI option, environment variable, saved configuration, then defaul
 | QVAC executable | `--bin` | `QVAC_BIN` | bundled `@qvac/cli` | Absolute path recommended. |
 | Working directory | `--cwd` | `QVAC_CWD` | current directory | Requires `--no-reuse` because upstream fleet identity does not include cwd. |
 | Context | `--ctx-size` | `QVAC_CTX_SIZE` | `32768` | Positive integer, applied to every catalog entry. |
-| Reasoning | `--reasoning-budget` | `QVAC_REASONING_BUDGET` | `-1` | `-1` enables reasoning; `0` disables it. |
+| Reasoning | `--reasoning-budget` | `QVAC_REASONING_BUDGET` | `0` | `-1` enables reasoning; `0` disables it. The beginner default avoids consuming the response budget with hidden reasoning. |
 | Tool formatting | `--tools` / `--no-tools` | `QVAC_TOOLS` | `true` | Applied in QVAC serve model config. |
 | Startup timeout | `--ready-timeout-ms` | `QVAC_READY_TIMEOUT_MS` | `900000` | Includes cold model preload/download time. Cache-aware disk preflight requires missing artifact bytes plus a 2 GiB safety margin. |
 | Idle cleanup | `--idle-stop-ms` | `QVAC_IDLE_STOP_MS` | `0` | Time after the last upstream consumer detaches. |

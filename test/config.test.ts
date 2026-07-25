@@ -25,14 +25,19 @@ import {
   saveConfig,
   validateConfig,
 } from "../src/config.js";
-import { main, parseArgs, physicalDownloadConsentMessage } from "../src/cli.js";
+import {
+  beginnerCapacityMessage,
+  main,
+  parseArgs,
+  physicalDownloadConsentMessage,
+} from "../src/cli.js";
 
 describe("configuration", () => {
   it("matches the agent-safe OpenClaw defaults", () => {
     expect(DEFAULT_CONFIG).toMatchObject({
       model: "qwen3.5-9b",
       ctxSize: 32768,
-      reasoningBudget: -1,
+      reasoningBudget: 0,
       tools: true,
       readyTimeoutMs: 900000,
       timeoutSeconds: 300,
@@ -321,6 +326,50 @@ describe("CLI parsing", () => {
         model: "qwen3.5-0.8b",
       }),
     ).toContain("approximately 1.69 GiB");
+  });
+
+  it("exposes start as the beginner managed path", () => {
+    expect(parseArgs(["start", "--yes", "--", "--cli"])).toMatchObject({
+      command: "start",
+      yes: true,
+      hermesArgs: ["--cli"],
+    });
+    expect(beginnerCapacityMessage(DEFAULT_CONFIG, 16 * 1024 ** 3)).toContain(
+      "16.0 GiB total memory",
+    );
+  });
+
+  it("keeps the beginner path managed", async () => {
+    await expect(main(["start", "--external"])).resolves.toBe(2);
+  });
+
+  it("requires explicit download consent before beginner setup in automation", async () => {
+    const home = await mkdtemp(join(tmpdir(), "hermes-qvac-start-consent-"));
+    const bin = await mkdtemp(join(tmpdir(), "hermes-qvac-start-bin-"));
+    const hermes = join(bin, "hermes");
+    await writeFile(
+      hermes,
+      '#!/usr/bin/env bash\nif [[ "${1:-}" == "--version" ]]; then echo "Hermes Agent v0.19.0"; fi\nexit 0\n',
+      { mode: 0o755 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [resolve("dist/cli.js"), "start", "--model", "qwen3.5-0.8b"],
+      {
+        env: {
+          ...process.env,
+          HOME: home,
+          HERMES_HOME: join(home, ".hermes"),
+          PATH: `${bin}:${process.env.PATH ?? ""}`,
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(4);
+    expect(result.stderr).toContain("Re-run with --yes");
+    await expect(
+      stat(join(home, ".hermes", "plugins", "model-providers", "qvac")),
+    ).rejects.toThrow();
   });
 
   it("provides command-specific help, version, model info, and non-mutating validation", async () => {

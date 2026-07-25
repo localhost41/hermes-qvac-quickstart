@@ -18,7 +18,7 @@ supervisor. It does not claim QVAC endorsement.
 - OpenAI-compatible `/v1/models` and `/v1/chat/completions`: discovery and
   inference boundary.
 
-The generated configuration sets `ctx_size: 32768`, `reasoning_budget: -1`,
+The generated configuration sets `ctx_size: 32768`, `reasoning_budget: 0`,
 and `tools: true` for each official alias. The selected main and auxiliary
 models alone are preloaded. Current defaults are Qwen3.5 9B main and Qwen3.5 2B
 auxiliary. Managed mode rejects aliases outside the official catalog; external
@@ -55,7 +55,7 @@ server-side retry policy, or otherwise hide these behaviors.
 1. Are the generated QVAC configuration and eight model mappings correct for
    current official packages?
 2. Are Qwen3.5 9B main and Qwen3.5 2B auxiliary defensible community defaults?
-3. Are `ctx_size: 32768`, `reasoning_budget: -1`, and `tools: true` appropriate
+3. Are `ctx_size: 32768`, `reasoning_budget: 0`, and `tools: true` appropriate
    defaults for Hermes agent use?
 
 This asks for correction of technical assumptions, not endorsement.

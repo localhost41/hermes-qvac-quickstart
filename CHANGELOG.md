@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Add `hermes-qvac start`, a consent-gated beginner path that safely installs the provider, starts official managed QVAC, waits for model readiness, launches Hermes, and cleans up in one command.
+- Default to `reasoning_budget: 0` for predictable first-run output while preserving the explicit reasoning override.
+- Make Bare desktop runtime packages and their loader dependency explicit so QVAC works from pnpm checkouts as well as npm installations, and fail fast when the platform runtime is incomplete.
+- Verify the packed beginner path, cached 0.8B and default 9B live inference, download-consent boundary, Hermes 0.19 diagnostics, and pinned managed-fleet reuse.
+- Update the `@fastify/static` security override to 10.1.2 and confirm the production audit is clean.
 - Override newly disclosed vulnerable QVAC transitive dependencies `@fastify/static` and `brace-expansion` with their patched releases.
 - Wait for cold managed servers to advertise every selected model instead of failing when the HTTP listener becomes ready before model download/load.
 - Override QVAC CLI's transitive `find-my-way` router to patched 9.7.0 after GHSA-c96f-x56v-gq3h began flagging 9.6.0.

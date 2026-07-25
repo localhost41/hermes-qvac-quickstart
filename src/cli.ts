@@ -20,6 +20,7 @@ import {
   estimatedPreloadBytes,
   EXIT,
   listModels,
+  modelStoragePreflight,
   output,
   prepareIsolatedHermesHome,
   publicServeState,
@@ -34,6 +35,9 @@ import {
   withMockQvac,
   writeServeState,
 } from "./runtime.js";
+import { createInterface } from "node:readline/promises";
+import { stdin, stderr } from "node:process";
+import { totalmem } from "node:os";
 import { realpathSync } from "node:fs";
 import { access, readFile } from "node:fs/promises";
 import { constants } from "node:fs";
@@ -176,6 +180,8 @@ function usage(command?: string): string {
     doctor:
       "Usage: hermes-qvac doctor [configuration options] [--json]\n\nCheck dependencies, plugin ownership/enablement/loading, catalog, sessions, and endpoint health without starting QVAC.",
     run: "Usage: hermes-qvac run [configuration options] [--external] [--json] -- [Hermes arguments]\n\nStart or reuse managed QVAC, or use a verified external endpoint, and run Hermes.",
+    start:
+      "Usage: hermes-qvac start [configuration options] [--yes] -- [Hermes arguments]\n\nBeginner path: check capacity, explain any model download, install/upgrade the provider, start managed QVAC, and launch Hermes. Defaults to Hermes' interactive CLI.",
     serve:
       "Usage: hermes-qvac serve [configuration options] [--json]\n\nHold an official managed QVAC consumer in the foreground until signaled or stopped through authenticated session control.",
     status:
@@ -188,9 +194,10 @@ function usage(command?: string): string {
     version: "Usage: hermes-qvac version [--json]",
   };
   if (command && commandHelp[command]) return commandHelp[command]!;
-  return `Usage: hermes-qvac <setup|config|doctor|models|run|serve|smoke|status|stop|uninstall|version> [options]
+  return `Usage: hermes-qvac <start|setup|config|doctor|models|run|serve|smoke|status|stop|uninstall|version> [options]
 
-Lifecycle: setup, run, serve, status, stop, uninstall
+Begin here: hermes-qvac start
+Lifecycle: start, setup, run, serve, status, stop, uninstall
 Config:    config show | set | reset | path | validate
 Testing:   doctor, smoke --transport-only, smoke --model ID --yes
 
@@ -211,6 +218,7 @@ Options:
   --idle-stop-ms MS          Shared serve idle lifetime (0)
   --timeout-seconds SEC      Hermes request timeout (300)
   --reuse | --no-reuse       Share a matching managed QVAC serve
+  --yes                       Confirm a model download for start/smoke
   --require-running           Make status fail unless an endpoint is ready
   --json                     Structured output
   --                         Remaining arguments are passed to Hermes
@@ -253,12 +261,47 @@ export function physicalDownloadConsentMessage(
   return `Real smoke may download ${size} for main '${config.model}' plus auxiliary '${config.auxModel}'. A cold run can transfer up to that payload, needs at least comparable free disk and RAM plus cache/context/runtime overhead, and can take minutes depending on hardware and network speed. Re-run with --yes only after reviewing those impacts, or use --transport-only.`;
 }
 
+export function beginnerCapacityMessage(
+  config: HermesQvacConfig,
+  memoryBytes = totalmem(),
+): string {
+  const payload = estimatedPreloadBytes(config);
+  const memory = (memoryBytes / 1024 ** 3).toFixed(1);
+  const estimate = payload === null ? "unknown" : formatBytes(payload);
+  return `Selected '${config.model}' with auxiliary '${config.auxModel}' (${estimate} model payload). This machine reports ${memory} GiB total memory. Model payload is only a lower bound; QVAC also needs memory for context and runtime overhead.`;
+}
+
+async function confirmBeginnerDownload(
+  config: HermesQvacConfig,
+  requiredDownloadBytes: number,
+  confirmed: boolean,
+): Promise<void> {
+  if (requiredDownloadBytes === 0 || confirmed) return;
+  const message = `${beginnerCapacityMessage(config)}\nQVAC needs to download approximately ${(requiredDownloadBytes / 1024 ** 3).toFixed(2)} GiB before first use.`;
+  if (!stdin.isTTY || !stderr.isTTY)
+    throw new Error(`${message}\nRe-run with --yes to approve this download.`);
+  stderr.write(`${message}\n`);
+  const prompt = createInterface({ input: stdin, output: stderr });
+  try {
+    const answer = await prompt.question(
+      "Download the models and continue? [y/N] ",
+    );
+    if (!/^(y|yes)$/i.test(answer.trim()))
+      throw new Error(
+        "Model download was not approved; no plugin files were changed.",
+      );
+  } finally {
+    prompt.close();
+  }
+}
+
 const COMMANDS = new Set([
   "help",
   "setup",
   "config",
   "doctor",
   "models",
+  "start",
   "run",
   "serve",
   "smoke",
@@ -307,8 +350,12 @@ function validateInvocation(parsed: ParsedArgs): void {
       `${parsed.command} does not accept positional arguments; pass Hermes arguments after --`,
     );
   }
-  if (parsed.hermesArgs.length > 0 && parsed.command !== "run")
-    throw new TypeError(`only run accepts Hermes arguments after --`);
+  if (
+    parsed.hermesArgs.length > 0 &&
+    parsed.command !== "run" &&
+    parsed.command !== "start"
+  )
+    throw new TypeError(`only start and run accept Hermes arguments after --`);
   if (
     parsed.hermesArgs.some(
       (argument) =>
@@ -324,10 +371,15 @@ function validateInvocation(parsed: ParsedArgs): void {
     );
   if (parsed.transportOnly && parsed.command !== "smoke")
     throw new TypeError("--transport-only is valid only with smoke");
-  if (parsed.yes && parsed.command !== "smoke")
-    throw new TypeError("--yes is valid only with smoke");
-  if (parsed.external && parsed.command !== "run" && parsed.command !== "smoke")
-    throw new TypeError("--external is valid only with run or smoke");
+  if (parsed.yes && parsed.command !== "smoke" && parsed.command !== "start")
+    throw new TypeError("--yes is valid only with start or smoke");
+  if (
+    parsed.external &&
+    parsed.command !== "start" &&
+    parsed.command !== "run" &&
+    parsed.command !== "smoke"
+  )
+    throw new TypeError("--external is valid only with start, run, or smoke");
   if (parsed.toolTask && parsed.command !== "smoke")
     throw new TypeError("--tool-task is valid only with smoke");
   if (parsed.toolTask && parsed.transportOnly)
@@ -338,9 +390,16 @@ function validateInvocation(parsed: ParsedArgs): void {
     );
   if (
     hasConfigOverrides(parsed.config) &&
-    !["setup", "config", "doctor", "run", "serve", "smoke", "status"].includes(
-      parsed.command ?? "",
-    )
+    ![
+      "start",
+      "setup",
+      "config",
+      "doctor",
+      "run",
+      "serve",
+      "smoke",
+      "status",
+    ].includes(parsed.command ?? "")
   ) {
     throw new TypeError(
       `${parsed.command} does not accept configuration options`,
@@ -697,7 +756,35 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         await isolated.cleanup();
       }
     }
-    if (command === "run" || command === "serve" || command === "smoke") {
+    if (command === "start") {
+      if (parsed.external || parsed.config.baseURL)
+        throw new TypeError(
+          "start is the managed beginner path; use run --external for an existing endpoint",
+        );
+      if (!commandVersion("hermes"))
+        throw new UnavailableError(
+          "Hermes is not installed or 'hermes --version' failed. Install Hermes using its current official instructions, then re-run this command.",
+        );
+      const config = (effectiveConfig = await resolveConfig(parsed.config));
+      const storage = await modelStoragePreflight(config);
+      await confirmBeginnerDownload(
+        config,
+        storage.requiredDownloadBytes,
+        parsed.yes,
+      );
+      const installed = await setupPlugin();
+      stderr.write(
+        `QVAC provider ${installed.upgraded ? "upgraded" : "installed"}. ${beginnerCapacityMessage(config)}\nStarting QVAC; the first model load may take several minutes...\n`,
+      );
+      parsed.command = "run";
+      parsed.hermesArgs =
+        parsed.hermesArgs.length > 0 ? parsed.hermesArgs : ["--cli"];
+    }
+    if (
+      parsed.command === "run" ||
+      command === "serve" ||
+      command === "smoke"
+    ) {
       const config = (effectiveConfig = await resolveConfig(parsed.config));
       if (parsed.toolTask) await assertFreshToolWorkspace(config);
       if (command === "smoke" && !parsed.yes && !config.baseURL) {

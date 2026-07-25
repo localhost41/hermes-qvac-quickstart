@@ -31,6 +31,7 @@ import {
   readServeStates,
   resolveModelConstant,
   runHermesCaptured,
+  assertBareRuntimePlatform,
   setupPlugin,
   startManaged,
   stopOwnedServe,
@@ -41,6 +42,9 @@ import {
 } from "../src/runtime.js";
 
 describe("official QVAC catalog", () => {
+  it("can resolve the installed Bare runtime for this platform", () => {
+    expect(assertBareRuntimePlatform()).toContain(`${process.platform}-`);
+  });
   it("resolves every friendly Hermes id to an SDK constant", () => {
     const models = listModels();
     expect(models).toHaveLength(8);
@@ -79,7 +83,7 @@ describe("official QVAC catalog", () => {
 
   it("configures the full catalog and preloads main plus auxiliary models", () => {
     const models = createManagedModels(DEFAULT_CONFIG);
-    const config = { ctx_size: 32768, reasoning_budget: -1, tools: true };
+    const config = { ctx_size: 32768, reasoning_budget: 0, tools: true };
     expect(models).toEqual([
       { name: "qwen3.5-0.8b", config, preload: false, default: false },
       { name: "qwen3.5-2b", config, preload: true, default: false },
@@ -164,7 +168,7 @@ describe("Hermes plugin installation", () => {
     await mkdir(source);
     await writeFile(
       hermes,
-      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.2 copied\\n"; fi\n`,
+      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.3 copied\\n"; fi\n`,
       { mode: 0o755 },
     );
     const profile = {
@@ -200,6 +204,9 @@ describe("Hermes plugin installation", () => {
       expect(
         result.checks.find((check) => check.name === "provider-profile"),
       ).toMatchObject({ ok: true, required: true });
+      expect(
+        result.checks.find((check) => check.name === "hermes-version"),
+      ).toMatchObject({ ok: true, required: false });
     } finally {
       await fixture.close();
     }
