@@ -1114,9 +1114,18 @@ export async function waitForEndpointModels(
   );
 }
 
+function bundledQvacEntry(): string | null {
+  try {
+    return createRequire(import.meta.url).resolve("@qvac/cli");
+  } catch {
+    return null;
+  }
+}
+
 function bundledQvacVersion(): string | null {
   try {
-    const entry = createRequire(import.meta.url).resolve("@qvac/cli");
+    const entry = bundledQvacEntry();
+    if (!entry) return null;
     const result = spawnSync(process.execPath, [entry, "--version"], {
       encoding: "utf8",
       timeout: 10_000,
@@ -1126,6 +1135,98 @@ function bundledQvacVersion(): string | null {
   } catch {
     return null;
   }
+}
+
+export interface QvacSystemPreflight {
+  ok: boolean;
+  platform: string;
+  arch: string;
+  nodeVersion: string;
+  checks: Array<{
+    id: string;
+    label: string;
+    status: "pass" | "warn" | "fail";
+    severity: "required" | "recommended" | "informational";
+    value?: string;
+    hint?: string;
+  }>;
+}
+
+export function qvacSystemPreflight(
+  config: Pick<HermesQvacConfig, "qvacBin" | "cwd">,
+  env: NodeJS.ProcessEnv = process.env,
+): QvacSystemPreflight {
+  const configuredBin =
+    config.qvacBin && !isAbsolute(config.qvacBin) && config.cwd
+      ? resolve(config.cwd, config.qvacBin)
+      : config.qvacBin;
+  const entry = configuredBin ? null : bundledQvacEntry();
+  if (!configuredBin && !entry)
+    throw new Error(
+      "bundled @qvac/cli could not be resolved for system preflight",
+    );
+  const result = configuredBin
+    ? spawnSync(configuredBin, ["doctor", "--json"], {
+        encoding: "utf8",
+        env: { ...process.env, ...env },
+        cwd: config.cwd,
+        timeout: 30_000,
+        maxBuffer: 2 * 1024 * 1024,
+      })
+    : spawnSync(process.execPath, [entry!, "doctor", "--json"], {
+        encoding: "utf8",
+        env: { ...process.env, ...env },
+        cwd: config.cwd,
+        timeout: 30_000,
+        maxBuffer: 2 * 1024 * 1024,
+      });
+  if (result.error || (result.status !== 0 && !result.stdout.trim()))
+    throw new Error(
+      `QVAC system preflight failed: ${result.error?.message ?? result.stderr.trim() ?? `exit ${result.status}`}`,
+    );
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(result.stdout);
+  } catch {
+    throw new Error("QVAC system preflight returned invalid JSON");
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed))
+    throw new Error("QVAC system preflight returned an invalid report");
+  const report = parsed as Record<string, unknown>;
+  const sections = Array.isArray(report.sections) ? report.sections : [];
+  const checks = sections.flatMap((section) => {
+    if (!section || typeof section !== "object") return [];
+    const entries = (section as Record<string, unknown>).checks;
+    if (!Array.isArray(entries)) return [];
+    return entries.filter(
+      (entry): entry is QvacSystemPreflight["checks"][number] =>
+        Boolean(entry) &&
+        typeof entry === "object" &&
+        typeof (entry as Record<string, unknown>).id === "string" &&
+        typeof (entry as Record<string, unknown>).label === "string" &&
+        ["pass", "warn", "fail"].includes(
+          String((entry as Record<string, unknown>).status),
+        ) &&
+        ["required", "recommended", "informational"].includes(
+          String((entry as Record<string, unknown>).severity),
+        ),
+    );
+  });
+  if (
+    typeof report.ok !== "boolean" ||
+    typeof report.platform !== "string" ||
+    typeof report.arch !== "string" ||
+    typeof report.nodeVersion !== "string" ||
+    checks.length === 0
+  )
+    throw new Error("QVAC system preflight report is missing required fields");
+  return {
+    ok: report.ok,
+    platform: report.platform,
+    arch: report.arch,
+    nodeVersion: report.nodeVersion,
+    checks,
+  };
 }
 
 async function sessionControlHealthy(state: ServeState): Promise<boolean> {

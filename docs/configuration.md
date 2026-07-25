@@ -4,6 +4,7 @@ Precedence is CLI option, environment variable, saved configuration, then defaul
 
 | Setting | CLI | Environment | Default | Notes |
 |---|---|---|---|---|
+| Beginner profile | `--fast` / `--full` on `start` | `HERMES_QVAC_PROFILE` | `full` | `fast` saves 4B/16K and supplies Hermes' terminal toolset; `full` restores 9B/32K and normal Hermes tools. Custom model/context combinations remain available through their explicit options. |
 | Main model | `--model` | `QVAC_MODEL` | `qwen3.5-9b` | Must be a friendly ID or SDK constant in the official catalog; constants normalize to friendly IDs. |
 | Auxiliary model | `--aux-model` | `QVAC_AUX_MODEL` | `qwen3.5-2b` | Same validation; preloaded for Hermes side tasks. |
 | Host | `--host` | `QVAC_HOST` | `127.0.0.1` | Only `127.0.0.1` and `localhost` are accepted. |
@@ -39,3 +40,8 @@ QVAC_BASE_URL=http://127.0.0.1:19000/v1 hermes-qvac run --external -- --cli
 ```
 
 `setup` accepts the same configuration options. It validates the complete effective configuration but persists only options explicitly supplied to that setup invocation; temporary environment overrides are not captured. Setup, doctor, models, config, and transport-only smoke never initiate a QVAC model download.
+
+`start` runs the official `qvac doctor --json` system preflight before setup or
+download consent. Required failures stop the beginner path. Recommended and
+informational checks remain visible but do not become plugin-invented support
+policy.

@@ -79,6 +79,7 @@ require_file "qvac_provider/__init__.py"
 require_file "scripts/doctor.sh"
 require_file "scripts/install.sh"
 require_file "scripts/start-qvac.sh"
+require_file "scripts/performance-benchmark.mjs"
 
 reject_path "docs/findings-ledger.md"
 reject_path "docs/release-readiness-"
@@ -133,6 +134,7 @@ require_installed_file "qvac_provider/__init__.py"
 require_installed_file "scripts/install.sh"
 require_installed_file "scripts/doctor.sh"
 require_installed_file "scripts/start-qvac.sh"
+require_installed_file "scripts/performance-benchmark.mjs"
 
 (
   cd "$CONSUMER_DIR"
@@ -165,6 +167,7 @@ EOF
   ./node_modules/.bin/hermes-qvac version --json >/dev/null
   ./node_modules/.bin/hermes-qvac models --json >/dev/null
   ./node_modules/.bin/hermes-qvac models info qwen3.5-9b --json >/dev/null
+  node node_modules/@localhost41/hermes-qvac-provider/scripts/performance-benchmark.mjs --help >/dev/null
 )
 
 CLI_BIN_DIR="$TMP_DIR/bin"
@@ -197,6 +200,10 @@ import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
 const args = process.argv.slice(2);
 const value = (name) => args[args.indexOf(name) + 1];
+if (args[0] === "doctor" && args.includes("--json")) {
+  console.log(JSON.stringify({ ok: true, platform: process.platform, arch: process.arch, nodeVersion: process.versions.node, sections: [{ checks: [{ id: "memory-total", label: "Total RAM", status: "pass", severity: "required", value: "test fixture" }] }] }));
+  process.exit(0);
+}
 if (args[0] !== "serve" || args[1] !== "openai") process.exit(64);
 const configPath = value("--config");
 const host = value("--host");
@@ -242,7 +249,7 @@ CLI_START_HOME="$TMP_DIR/cli-start-hermes-home"
 (
   cd "$CONSUMER_DIR"
   PATH="$CLI_BIN_DIR:$PATH" HERMES_HOME="$CLI_START_HOME" CLI_HERMES_LOG="$CLI_HERMES_LOG" CLI_FAKE_INSTALL="$CLI_FAKE_INSTALL" FAKE_QVAC_CAPTURE="$TMP_DIR/start-qvac-config.json" \
-    ./node_modules/.bin/hermes-qvac start --model qwen3.5-4b --bin "$CLI_BIN_DIR/qvac-fake.mjs" --no-reuse --yes >/dev/null
+    ./node_modules/.bin/hermes-qvac start --fast --bin "$CLI_BIN_DIR/qvac-fake.mjs" --no-reuse --yes >/dev/null
 )
 if [[ ! -f "$CLI_START_HOME/plugins/model-providers/qvac/.hermes-qvac-provider.json" ]]; then
   echo "Packed beginner start did not install its owned provider" >&2
@@ -251,7 +258,7 @@ fi
 node -e '
 const fs = require("fs");
 const config = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
-if (config.model !== "qwen3.5-4b" || config.reuse !== false) {
+if (config.profile !== "fast" || config.model !== "qwen3.5-4b" || config.ctxSize !== 16384 || config.reuse !== false) {
   throw new Error(`Beginner start did not persist explicit choices: ${JSON.stringify(config)}`);
 }
 ' "$CLI_START_HOME/hermes-qvac/config.json"

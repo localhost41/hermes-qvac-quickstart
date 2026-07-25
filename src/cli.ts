@@ -24,6 +24,7 @@ import {
   output,
   prepareIsolatedHermesHome,
   publicServeState,
+  qvacSystemPreflight,
   readServeStateInventory,
   runHermes,
   runHermesCaptured,
@@ -55,6 +56,8 @@ interface ParsedArgs {
   external: boolean;
   requireRunning: boolean;
   toolTask: boolean;
+  fast: boolean;
+  full: boolean;
   config: ConfigOverrides;
 }
 
@@ -101,6 +104,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     external: false,
     requireRunning: false,
     toolTask: false,
+    fast: false,
+    full: false,
     config: {},
   };
   for (let index = 1; index < ownArgs.length; index += 1) {
@@ -119,6 +124,38 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
     if (arg === "--tool-task") {
       result.toolTask = true;
+      continue;
+    }
+    if (arg === "--fast") {
+      if (result.full)
+        throw new TypeError("--fast cannot be combined with --full");
+      if (
+        result.config.model !== undefined ||
+        result.config.ctxSize !== undefined
+      )
+        throw new TypeError(
+          "--fast cannot be combined with --model or --ctx-size",
+        );
+      result.fast = true;
+      result.config.profile = "fast";
+      result.config.model = "qwen3.5-4b";
+      result.config.ctxSize = 16384;
+      continue;
+    }
+    if (arg === "--full") {
+      if (result.fast)
+        throw new TypeError("--full cannot be combined with --fast");
+      if (
+        result.config.model !== undefined ||
+        result.config.ctxSize !== undefined
+      )
+        throw new TypeError(
+          "--full cannot be combined with --model or --ctx-size",
+        );
+      result.full = true;
+      result.config.profile = "full";
+      result.config.model = "qwen3.5-9b";
+      result.config.ctxSize = 32768;
       continue;
     }
     if (arg === "--external") {
@@ -151,6 +188,13 @@ export function parseArgs(argv: string[]): ParsedArgs {
     }
     const key = VALUE_OPTIONS[arg];
     if (key) {
+      if (
+        (result.fast || result.full) &&
+        (key === "model" || key === "ctxSize")
+      )
+        throw new TypeError(
+          "--fast/--full cannot be combined with --model or --ctx-size",
+        );
       const value = ownArgs[index + 1];
       if (value === undefined) throw new TypeError(`${arg} requires a value`);
       (result.config as Record<string, unknown>)[key] = NUMBER_KEYS.has(key)
@@ -181,7 +225,7 @@ function usage(command?: string): string {
       "Usage: hermes-qvac doctor [configuration options] [--json]\n\nCheck dependencies, plugin ownership/enablement/loading, catalog, sessions, and endpoint health without starting QVAC.",
     run: "Usage: hermes-qvac run [configuration options] [--external] [--json] -- [Hermes arguments]\n\nStart or reuse managed QVAC, or use a verified external endpoint, and run Hermes.",
     start:
-      "Usage: hermes-qvac start [configuration options] [--yes] -- [Hermes arguments]\n\nBeginner path: check capacity, explain any model download, install/upgrade the provider, start managed QVAC, and launch Hermes. Defaults to Hermes' interactive CLI.",
+      "Usage: hermes-qvac start [configuration options] [--fast|--full] [--yes] -- [Hermes arguments]\n\nBeginner path: check capacity, explain any model download, install/upgrade the provider, start managed QVAC, and launch Hermes. Defaults to the saved profile or Hermes' full interactive agent. --fast selects QVAC 4B, a 16K context, and Hermes' terminal-only toolset for a lighter reduced-capability session; --full restores 9B/32K and normal Hermes tools.",
     serve:
       "Usage: hermes-qvac serve [configuration options] [--json]\n\nHold an official managed QVAC consumer in the foreground until signaled or stopped through authenticated session control.",
     status:
@@ -213,6 +257,7 @@ Options:
   --ctx-size TOKENS          QVAC context size (32768)
   --reasoning-budget N       -1 enables reasoning; 0 disables it
   --tools | --no-tools       Toggle QVAC tool-call formatting
+  --fast | --full             Save fast 4B/16K or full 9B/32K profile
   --tool-task                Verify a real Hermes file-tool side effect
   --ready-timeout-ms MS      Startup/model-download timeout (900000)
   --idle-stop-ms MS          Shared serve idle lifetime (0)
@@ -382,6 +427,22 @@ function validateInvocation(parsed: ParsedArgs): void {
     throw new TypeError("--external is valid only with start, run, or smoke");
   if (parsed.toolTask && parsed.command !== "smoke")
     throw new TypeError("--tool-task is valid only with smoke");
+  if (parsed.fast && parsed.command !== "start")
+    throw new TypeError("--fast is valid only with start");
+  if (parsed.full && parsed.command !== "start")
+    throw new TypeError("--full is valid only with start");
+  if (
+    parsed.fast &&
+    parsed.hermesArgs.some(
+      (argument) =>
+        argument === "--toolsets" ||
+        argument === "-t" ||
+        argument.startsWith("--toolsets="),
+    )
+  )
+    throw new TypeError(
+      "--fast selects the terminal toolset; omit it to pass custom Hermes --toolsets",
+    );
   if (parsed.toolTask && parsed.transportOnly)
     throw new TypeError("--tool-task cannot be combined with --transport-only");
   if (parsed.toolTask && (!parsed.config.cwd || parsed.config.reuse !== false))
@@ -766,6 +827,28 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
           "Hermes is not installed or 'hermes --version' failed. Install Hermes using its current official instructions, then re-run this command.",
         );
       const config = (effectiveConfig = await resolveConfig(parsed.config));
+      const system = qvacSystemPreflight(config);
+      const hardware = system.checks
+        .filter((check) =>
+          ["memory-total", "memory-available", "gpu-acceleration"].includes(
+            check.id,
+          ),
+        )
+        .map((check) => `${check.label}: ${check.value ?? check.status}`)
+        .join("; ");
+      if (!system.ok) {
+        const failures = system.checks
+          .filter(
+            (check) => check.status === "fail" && check.severity === "required",
+          )
+          .map(
+            (check) =>
+              `${check.label}: ${check.value ?? "failed"}${check.hint ? ` (${check.hint})` : ""}`,
+          );
+        throw new UnavailableError(
+          `QVAC system preflight did not pass${failures.length ? `: ${failures.join("; ")}` : ""}`,
+        );
+      }
       const storage = await modelStoragePreflight(config);
       await confirmBeginnerDownload(
         config,
@@ -794,11 +877,21 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         throw error;
       }
       stderr.write(
-        `QVAC provider ${installed.upgraded ? "upgraded" : "installed"}. ${beginnerCapacityMessage(config)}\nStarting QVAC; the first model load may take several minutes...\n`,
+        `QVAC system preflight passed for ${system.platform}-${system.arch}${hardware ? ` (${hardware})` : ""}.\nQVAC provider ${installed.upgraded ? "upgraded" : "installed"}. ${beginnerCapacityMessage(config)}\nStarting QVAC; the first model load may take several minutes...\n`,
       );
       parsed.command = "run";
       parsed.hermesArgs =
         parsed.hermesArgs.length > 0 ? parsed.hermesArgs : ["--cli"];
+      if (
+        config.profile === "fast" &&
+        !parsed.hermesArgs.some(
+          (argument) =>
+            argument === "--toolsets" ||
+            argument === "-t" ||
+            argument.startsWith("--toolsets="),
+        )
+      )
+        parsed.hermesArgs.push("--toolsets", "terminal");
     }
     if (
       parsed.command === "run" ||

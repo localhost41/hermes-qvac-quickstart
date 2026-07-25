@@ -1,10 +1,16 @@
-# hermes-qvac-provider
+# Hermes + QVAC Quickstart
 
-A community Hermes Agent provider and lifecycle CLI for private, on-device QVAC models.
+A community-maintained one-command quickstart for running Hermes Agent with
+private, on-device QVAC models.
 
 > Independent project maintained by localhost41. Not affiliated with or endorsed by Tether, QVAC, or Hermes Agent.
 
-The Python plugin makes `qvac` a real Hermes model provider. The `hermes-qvac` CLI adds the lifecycle surface Hermes model-provider plugins do not currently have. It deliberately reuses the official QVAC catalog, config synthesizer, and managed supervisor rather than maintaining a parallel runtime.
+The npm package remains `@localhost41/hermes-qvac-provider` and the command
+remains `hermes-qvac`, preserving compatibility for existing beta users. The
+Python plugin makes `qvac` a real Hermes model provider. The companion CLI adds
+the lifecycle surface Hermes model-provider plugins do not currently have. It
+deliberately reuses the official QVAC catalog, config synthesizer, and managed
+supervisor rather than maintaining a parallel runtime.
 
 ## Requirements
 
@@ -36,6 +42,16 @@ npm install -g @localhost41/hermes-qvac-provider@beta
 hermes-qvac start
 ```
 
+Choose the full local agent or an explicitly reduced-capability fast profile:
+
+```bash
+# QVAC 9B, 32K context, normal Hermes tool catalog
+hermes-qvac start
+
+# QVAC 4B, 16K context, Hermes terminal toolset only
+hermes-qvac start --fast
+```
+
 `start` checks available disk, shows the selected models and estimated download,
 asks before downloading anything, safely installs or upgrades the provider,
 starts QVAC on loopback, waits for it to become ready, and opens Hermes. On
@@ -44,12 +60,15 @@ and repeats the safe installation check.
 Non-interactive automation must pass `--yes` to approve a required download.
 
 The default 9B model follows QVAC's current local-agent guidance, but local
-inference is hardware-dependent. In a 2026-07-25 review on a 16 GiB Apple
-silicon Mac, two cached-model exact-response runs took about 2.5–3 minutes
-after readiness. That is a measured data point, not a guaranteed benchmark.
-For a lighter first trial, `hermes-qvac start --model qwen3.5-4b` uses QVAC's
-smaller agent candidate; expect lower tool reliability than the default. The
-0.8B model is intended only for connectivity checks, not agent work.
+inference is hardware-dependent. A controlled 2026-07-25 review found that the
+dominant cost was evaluating Hermes' normal prompt and tool schemas, not the
+quickstart lifecycle: the same warmed 9B QVAC process averaged 0.38 seconds for
+a minimal direct request, 97.84 seconds for normal Hermes (28 tools), and 22.69
+seconds for Hermes restricted to the terminal toolset (2 tools). `--fast`
+therefore makes both tradeoffs explicit instead of silently weakening the
+agent. On the same 16 GiB Apple silicon Mac, its cached end-to-end rerun took
+18–20 seconds; its warmed request-only benchmark averaged 12.79 seconds. The
+0.8B model remains a connectivity check, not an agent model.
 
 `setup` atomically copies the minimal Python assets into `$HERMES_HOME/plugins/model-providers/qvac` and enables the plugin through Hermes. It supports upgrades from owned and recognized earlier alpha installations, refuses unrelated directories, and never downloads a model.
 
@@ -110,6 +129,7 @@ hermes-qvac version
 - `config validate` resolves and validates configuration without writing anything.
 - `models info` reports the official SDK constant, modality, size metadata, and default status.
 - `uninstall` verifies ownership before disabling or removing the plugin. Saved configuration remains until `config reset`.
+- `start --fast` persists the 4B/16K profile and restricts current and later starts to Hermes' supported terminal toolset. Use `start --full` to restore 9B/32K and normal Hermes tools.
 
 CLI-owned exit codes are `0` success, `2` invalid usage/configuration, `3` unavailable dependencies/endpoints/health, and `4` execution or internal failure. `run` propagates a launched Hermes process's exit code. `--json` returns one compact JSON object for finite commands. Managed `serve` and physical smoke emit newline-delimited event objects (`event: "ready"`, then `"stopping"` or `"result"`); managed `run` emits its ready event and then deliberately attaches Hermes' own standard streams. Non-placeholder API keys are redacted.
 
@@ -175,6 +195,23 @@ hermes-qvac smoke --model qwen3.5-0.8b --yes
 
 The physical test starts managed QVAC, waits for model readiness, invokes real Hermes, and requires exact `pong`. No model download occurs during setup, doctor, models, config, package verification, or transport-only smoke.
 
+## Performance attribution
+
+With a QVAC endpoint already running and an isolated installed provider, record
+a sanitized direct-versus-Hermes comparison:
+
+```bash
+pnpm benchmark:performance -- \
+  --base-url http://127.0.0.1:11434/v1 \
+  --model qwen3.5-9b \
+  --hermes-home /path/to/isolated-hermes-home \
+  --iterations 5
+```
+
+The report retains timings, payload byte counts, message character counts, tool
+counts, and tool-schema size. It deliberately omits credentials, bodies, and
+full prompts. See [the measured performance report](docs/performance.md).
+
 ## Supported host surface
 
 The release candidate supports fresh one-shot and interactive Hermes sessions.
@@ -238,6 +275,7 @@ Engineering evidence:
 - [Hermes host conformance](docs/hermes-host-conformance.md)
 - [QVAC conformance report](docs/qvac-conformance-report.md)
 - [model experience](docs/model-experience-2026-07-22.md)
+- [performance attribution](docs/performance.md)
 - [resilience and soak](docs/resilience-soak-report.md)
 - [moderator architecture](docs/moderator-architecture.md)
 - [security and privacy](docs/security.md)

@@ -26,6 +26,7 @@ import {
   installPlugin,
   listModels,
   pluginDir,
+  qvacSystemPreflight,
   readServeState,
   readServeStateInventory,
   readServeStates,
@@ -124,6 +125,33 @@ describe("official QVAC catalog", () => {
       requiredDownloadBytes: 532_517_120 + 1_280_835_840,
       safetyBytes: 2 * 1024 ** 3,
     });
+  });
+
+  it("uses the official QVAC doctor report for system preflight", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hermes-qvac-doctor-"));
+    const binary = join(directory, "qvac");
+    await writeFile(
+      binary,
+      `#!/bin/sh
+printf '%s\\n' '{"ok":true,"platform":"darwin","arch":"arm64","nodeVersion":"26.3.0","sections":[{"checks":[{"id":"memory-total","label":"Total RAM","status":"pass","severity":"required","value":"16 GB"}]}]}'
+`,
+      { mode: 0o755 },
+    );
+    expect(qvacSystemPreflight({ qvacBin: binary })).toMatchObject({
+      ok: true,
+      platform: "darwin",
+      arch: "arm64",
+      checks: [{ id: "memory-total", value: "16 GB" }],
+    });
+  });
+
+  it("rejects malformed QVAC doctor output", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hermes-qvac-doctor-bad-"));
+    const binary = join(directory, "qvac");
+    await writeFile(binary, "#!/bin/sh\nprintf nope\n", { mode: 0o755 });
+    expect(() => qvacSystemPreflight({ qvacBin: binary })).toThrow(
+      "invalid JSON",
+    );
   });
 
   it("exposes exact official ordering and expected sizes for every catalog entry", () => {

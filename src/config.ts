@@ -13,6 +13,7 @@ import { randomUUID } from "node:crypto";
 import { qvacCatalog } from "@qvac/ai-sdk-provider/models";
 
 export interface HermesQvacConfig {
+  profile: "full" | "fast";
   model: string;
   auxModel: string;
   host: string;
@@ -34,6 +35,7 @@ export type ConfigOverrides = Partial<HermesQvacConfig>;
 const MAX_NODE_TIMER_MS = 2_147_483_647;
 const CONFIG_KEYS = new Set<keyof HermesQvacConfig>([
   "model",
+  "profile",
   "auxModel",
   "host",
   "port",
@@ -51,6 +53,7 @@ const CONFIG_KEYS = new Set<keyof HermesQvacConfig>([
 ]);
 
 export const DEFAULT_CONFIG: Readonly<HermesQvacConfig> = Object.freeze({
+  profile: "full",
   model: "qwen3.5-9b",
   auxModel: "qwen3.5-2b",
   host: "127.0.0.1",
@@ -111,6 +114,9 @@ export function environmentOverrides(
   );
   const reuse = optionalBoolean("QVAC_REUSE", env.QVAC_REUSE);
   return {
+    ...(env.HERMES_QVAC_PROFILE
+      ? { profile: env.HERMES_QVAC_PROFILE as HermesQvacConfig["profile"] }
+      : {}),
     ...(env.QVAC_MODEL ? { model: env.QVAC_MODEL } : {}),
     ...(env.QVAC_AUX_MODEL ? { auxModel: env.QVAC_AUX_MODEL } : {}),
     ...(env.QVAC_HOST ? { host: env.QVAC_HOST } : {}),
@@ -164,6 +170,8 @@ export function validateConfig(input: HermesQvacConfig): HermesQvacConfig {
   for (const key of Object.keys(config))
     if (!CONFIG_KEYS.has(key as keyof HermesQvacConfig))
       throw new TypeError(`unknown config key: ${key}`);
+  if (!(["full", "fast"] as const).includes(config.profile))
+    throw new TypeError("profile must be full or fast");
   if (typeof config.model !== "string")
     throw new TypeError("model must be a string");
   if (typeof config.auxModel !== "string")

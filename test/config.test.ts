@@ -35,6 +35,7 @@ import {
 describe("configuration", () => {
   it("matches the agent-safe OpenClaw defaults", () => {
     expect(DEFAULT_CONFIG).toMatchObject({
+      profile: "full",
       model: "qwen3.5-9b",
       ctxSize: 32768,
       reasoningBudget: 0,
@@ -337,6 +338,23 @@ describe("CLI parsing", () => {
     expect(beginnerCapacityMessage(DEFAULT_CONFIG, 16 * 1024 ** 3)).toContain(
       "16.0 GiB total memory",
     );
+  });
+
+  it("offers an explicit reduced-capability fast profile", async () => {
+    expect(parseArgs(["start", "--fast", "--yes"])).toMatchObject({
+      command: "start",
+      fast: true,
+      config: { profile: "fast", model: "qwen3.5-4b", ctxSize: 16384 },
+    });
+    expect(parseArgs(["start", "--full"])).toMatchObject({
+      command: "start",
+      full: true,
+      config: { profile: "full", model: "qwen3.5-9b", ctxSize: 32768 },
+    });
+    await expect(
+      main(["start", "--fast", "--", "--toolsets", "web"]),
+    ).resolves.toBe(2);
+    await expect(main(["run", "--fast"])).resolves.toBe(2);
   });
 
   it("keeps the beginner path managed", async () => {

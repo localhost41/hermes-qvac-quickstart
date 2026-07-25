@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Present the project as Hermes + QVAC Quickstart while retaining the existing npm package, CLI, and provider identifiers for compatibility.
+- Add an explicit `--fast` profile using QVAC 4B, a 16K context, and Hermes' terminal toolset, backed by a sanitized performance-attribution harness.
+- Run the official QVAC JSON system preflight before beginner setup or model download.
 - Add `hermes-qvac start`, a consent-gated beginner path that safely installs the provider, starts official managed QVAC, waits for model readiness, launches Hermes, and cleans up in one command.
 - Persist explicit beginner configuration choices transactionally so a simple rerun retains the selected model and settings.
 - Default to `reasoning_budget: 0` for predictable first-run output while preserving the explicit reasoning override.
