@@ -1,7 +1,7 @@
 id: qvac
 name: qvac
 display_name: QVAC
-version: 0.1.0-beta.1
+version: 0.1.0-beta.2
 kind: model-provider
 entrypoint: qvac_provider
 description: Local-first QVAC models via qvac serve openai

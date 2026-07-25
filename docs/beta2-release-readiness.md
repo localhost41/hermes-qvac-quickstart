@@ -1,6 +1,6 @@
-# Beta.1 release readiness
+# Beta.2 release readiness
 
-Candidate package: `@localhost41/hermes-qvac-provider@0.1.0-beta.1`.
+Candidate package: `@localhost41/hermes-qvac-provider@0.1.0-beta.2`.
 
 Current recommendation: **GO AS BETA WITH EXPLICIT UPSTREAM LIMITATIONS**.
 
@@ -12,10 +12,11 @@ Current recommendation: **GO AS BETA WITH EXPLICIT UPSTREAM LIMITATIONS**.
 - Session resume is outside the supported surface; fresh one-shot and interactive sessions are supported.
 - Packed Hermes 0.19 transport acceptance passes on clean Linux x64, and the provider contract passes against Hermes 0.19 plus current main.
 - The beta resilience rerun passed 100 sequential and 20 concurrent QVAC requests with zero failures; p50 was 103 ms, p95 1,414 ms, and maximum 2,021 ms for one-token responses.
-- The production audit discovered `find-my-way` 9.6.0 through QVAC CLI and now resolves patched 9.7.0 through a lockfile override; the high-severity audit and full regression suite pass.
-- The frozen tarball contains 25 files, is 48,734 bytes packed and 178,919 bytes unpacked, and has SHA-256 `e00c545209d6ee2e38f6ea3cb3c7d7c6057a6bcb4ac553d37c8eb744ff24ac63`.
+- The production audit discovered `find-my-way` 9.6.0 through QVAC CLI and now resolves patched 9.7.0 through a lockfile override.
+- Beta.2 also overrides newly disclosed vulnerable transitive releases of `@fastify/static` and `brace-expansion` with patched 10.1.1 and 5.0.8 respectively; publication remains gated on a clean high-severity production audit.
 - Packed macOS acceptance passed isolated install, copied setup, Hermes discovery, doctor, real OpenAI-compatible transport, idempotent upgrade, owned uninstall, and cleanup without using the source checkout at runtime.
-- The reproducible CycloneDX 1.6 beta SBOM contains 272 components and has SHA-256 `e058827a3b778b9cc97fc2ec9ca09d6c164c5831cc0ef889bdb3dd6d85cbec97`.
+- The frozen beta.2 tarball contains 25 files, is 48,796 bytes packed and 179,055 bytes unpacked, and has SHA-256 `e6805136e10922f1256a3ec5e16b4e76e954a1d5ee93abcff8aa6c7b524d93be`.
+- The reproducible CycloneDX 1.6 beta.2 SBOM contains 272 components and has SHA-256 `30fdfd5895e31326836bacadd8b72b8fa92729b581cade59d497e240dc87c5ea`.
 
 ## Explicit limitations
 

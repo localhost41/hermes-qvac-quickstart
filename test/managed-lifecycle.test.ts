@@ -678,7 +678,7 @@ printf '{"class":"QvacProviderProfile","provider_profile":true,"name":"qvac","al
 if [[ "$1" == "--version" ]]; then
   printf 'Hermes Agent test\nInstall directory: ${fakeInstall}\n'
 elif [[ "$1 $2" == "plugins list" ]]; then
-  echo 'enabled user 0.1.0-beta.1 qvac'
+  echo 'enabled user 0.1.0-beta.2 qvac'
 else
   exit 0
 fi

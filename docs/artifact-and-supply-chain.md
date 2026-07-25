@@ -34,6 +34,13 @@ frozen, avoiding a self-referential checksum inside the artifact.
 The beta tarball contains 25 files, is 48,734 bytes packed, and has SHA-256
 `e00c545209d6ee2e38f6ea3cb3c7d7c6057a6bcb4ac553d37c8eb744ff24ac63`.
 
+`artifacts/beta2.cdx.json` records the patched beta.2 installed dependency
+graph. It contains 272 components and has SHA-256
+`30fdfd5895e31326836bacadd8b72b8fa92729b581cade59d497e240dc87c5ea`.
+The beta.2 tarball contains 25 files, is 48,796 bytes packed and 179,055 bytes
+unpacked, and has SHA-256
+`e6805136e10922f1256a3ec5e16b4e76e954a1d5ee93abcff8aa6c7b524d93be`.
+
 The protected prerelease publish workflow is manual, accepts an explicit ref,
 targets the `npm-publish` environment, requires an alpha or beta version,
 publishes with npm trusted publishing/provenance, and derives the matching
