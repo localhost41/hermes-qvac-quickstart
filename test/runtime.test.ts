@@ -164,7 +164,7 @@ describe("Hermes plugin installation", () => {
     await mkdir(source);
     await writeFile(
       hermes,
-      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.1 copied\\n"; fi\n`,
+      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.2 copied\\n"; fi\n`,
       { mode: 0o755 },
     );
     const profile = {

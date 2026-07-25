@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- Override newly disclosed vulnerable QVAC transitive dependencies `@fastify/static` and `brace-expansion` with their patched releases.
 - Wait for cold managed servers to advertise every selected model instead of failing when the HTTP listener becomes ready before model download/load.
 - Override QVAC CLI's transitive `find-my-way` router to patched 9.7.0 after GHSA-c96f-x56v-gq3h began flagging 9.6.0.
 - Add consent-gated physical Linux inference and mandatory packed Hermes 0.19 transport gates for beta qualification.
