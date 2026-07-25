@@ -12,5 +12,6 @@
 | Real local Hermes | isolated `HERMES_HOME`, actual provider discovery/transport | setup, enable, actual subclass loading, streaming exact `pong`, adverse HTTP/SSE/timeout behavior, uninstall | `pnpm smoke:transport`, `pnpm verify:hermes`, isolated doctor workflow |
 | Official packages | locked published runtime and scheduled latest compatible packages | official config synthesizer/manager behavior and drift detection | normal suite and compatibility workflow |
 | Physical inference | real QVAC/model | exact `pong`, download/runtime behavior | `hermes-qvac smoke --model … --yes`; intentionally not run without consent |
+| Performance attribution | recording loopback proxy, real Hermes/QVAC | minimal API versus normal and terminal-only Hermes payload size and latency without recording prompts/secrets | `pnpm benchmark:performance -- ...` |
 
 Tests use bounded polling for asynchronous process/file readiness. Vitest assigns each run a private temporary root and removes that root during global teardown, including after ordinary failures; spawned CLI and fixture processes inherit it. There are no committed `.skip`, `xit`, or equivalent exclusions.

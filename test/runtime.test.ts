@@ -26,11 +26,13 @@ import {
   installPlugin,
   listModels,
   pluginDir,
+  qvacSystemPreflight,
   readServeState,
   readServeStateInventory,
   readServeStates,
   resolveModelConstant,
   runHermesCaptured,
+  assertBareRuntimePlatform,
   setupPlugin,
   startManaged,
   stopOwnedServe,
@@ -41,6 +43,9 @@ import {
 } from "../src/runtime.js";
 
 describe("official QVAC catalog", () => {
+  it("can resolve the installed Bare runtime for this platform", () => {
+    expect(assertBareRuntimePlatform()).toContain(`${process.platform}-`);
+  });
   it("resolves every friendly Hermes id to an SDK constant", () => {
     const models = listModels();
     expect(models).toHaveLength(8);
@@ -79,7 +84,7 @@ describe("official QVAC catalog", () => {
 
   it("configures the full catalog and preloads main plus auxiliary models", () => {
     const models = createManagedModels(DEFAULT_CONFIG);
-    const config = { ctx_size: 32768, reasoning_budget: -1, tools: true };
+    const config = { ctx_size: 32768, reasoning_budget: 0, tools: true };
     expect(models).toEqual([
       { name: "qwen3.5-0.8b", config, preload: false, default: false },
       { name: "qwen3.5-2b", config, preload: true, default: false },
@@ -120,6 +125,33 @@ describe("official QVAC catalog", () => {
       requiredDownloadBytes: 532_517_120 + 1_280_835_840,
       safetyBytes: 2 * 1024 ** 3,
     });
+  });
+
+  it("uses the official QVAC doctor report for system preflight", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hermes-qvac-doctor-"));
+    const binary = join(directory, "qvac");
+    await writeFile(
+      binary,
+      `#!/bin/sh
+printf '%s\\n' '{"ok":true,"platform":"darwin","arch":"arm64","nodeVersion":"26.3.0","sections":[{"checks":[{"id":"memory-total","label":"Total RAM","status":"pass","severity":"required","value":"16 GB"}]}]}'
+`,
+      { mode: 0o755 },
+    );
+    expect(qvacSystemPreflight({ qvacBin: binary })).toMatchObject({
+      ok: true,
+      platform: "darwin",
+      arch: "arm64",
+      checks: [{ id: "memory-total", value: "16 GB" }],
+    });
+  });
+
+  it("rejects malformed QVAC doctor output", async () => {
+    const directory = await mkdtemp(join(tmpdir(), "hermes-qvac-doctor-bad-"));
+    const binary = join(directory, "qvac");
+    await writeFile(binary, "#!/bin/sh\nprintf nope\n", { mode: 0o755 });
+    expect(() => qvacSystemPreflight({ qvacBin: binary })).toThrow(
+      "invalid JSON",
+    );
   });
 
   it("exposes exact official ordering and expected sizes for every catalog entry", () => {
@@ -164,7 +196,7 @@ describe("Hermes plugin installation", () => {
     await mkdir(source);
     await writeFile(
       hermes,
-      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.2 copied\\n"; fi\n`,
+      `#!/usr/bin/env bash\nif [[ "$1" == "--version" ]]; then printf "Hermes Agent v0.19.0\\nInstall directory: ${source}\\n"; else printf "enabled qvac 0.1.0-beta.3 copied\\n"; fi\n`,
       { mode: 0o755 },
     );
     const profile = {
@@ -200,6 +232,9 @@ describe("Hermes plugin installation", () => {
       expect(
         result.checks.find((check) => check.name === "provider-profile"),
       ).toMatchObject({ ok: true, required: true });
+      expect(
+        result.checks.find((check) => check.name === "hermes-version"),
+      ).toMatchObject({ ok: true, required: false });
     } finally {
       await fixture.close();
     }
@@ -449,6 +484,29 @@ describe("transport fixture", () => {
       ),
     ).resolves.toEqual(["main", "aux"]);
     expect(attempts).toBe(2);
+  });
+
+  it("preserves a confirmed missing-model diagnosis at the timeout boundary", async () => {
+    let attempts = 0;
+    const fetchImpl = async () => {
+      attempts += 1;
+      if (attempts === 1)
+        return new Response('{"data":[{"id":"main"}]}', { status: 200 });
+      throw new DOMException(
+        "The operation was aborted due to timeout",
+        "TimeoutError",
+      );
+    };
+    await expect(
+      waitForEndpointModels(
+        "http://127.0.0.1:1/v1",
+        ["main", "aux"],
+        20,
+        undefined,
+        fetchImpl,
+        () => new Promise((resolvePromise) => setTimeout(resolvePromise, 2)),
+      ),
+    ).rejects.toThrow("missing 'aux'");
   });
 
   it("bounds captured Hermes process duration", async () => {

@@ -25,14 +25,20 @@ import {
   saveConfig,
   validateConfig,
 } from "../src/config.js";
-import { main, parseArgs, physicalDownloadConsentMessage } from "../src/cli.js";
+import {
+  beginnerCapacityMessage,
+  main,
+  parseArgs,
+  physicalDownloadConsentMessage,
+} from "../src/cli.js";
 
 describe("configuration", () => {
   it("matches the agent-safe OpenClaw defaults", () => {
     expect(DEFAULT_CONFIG).toMatchObject({
+      profile: "full",
       model: "qwen3.5-9b",
       ctxSize: 32768,
-      reasoningBudget: -1,
+      reasoningBudget: 0,
       tools: true,
       readyTimeoutMs: 900000,
       timeoutSeconds: 300,
@@ -323,6 +329,67 @@ describe("CLI parsing", () => {
     ).toContain("approximately 1.69 GiB");
   });
 
+  it("exposes start as the beginner managed path", () => {
+    expect(parseArgs(["start", "--yes", "--", "--cli"])).toMatchObject({
+      command: "start",
+      yes: true,
+      hermesArgs: ["--cli"],
+    });
+    expect(beginnerCapacityMessage(DEFAULT_CONFIG, 16 * 1024 ** 3)).toContain(
+      "16.0 GiB total memory",
+    );
+  });
+
+  it("offers an explicit reduced-capability fast profile", async () => {
+    expect(parseArgs(["start", "--fast", "--yes"])).toMatchObject({
+      command: "start",
+      fast: true,
+      config: { profile: "fast", model: "qwen3.5-4b", ctxSize: 16384 },
+    });
+    expect(parseArgs(["start", "--full"])).toMatchObject({
+      command: "start",
+      full: true,
+      config: { profile: "full", model: "qwen3.5-9b", ctxSize: 32768 },
+    });
+    await expect(
+      main(["start", "--fast", "--", "--toolsets", "web"]),
+    ).resolves.toBe(2);
+    await expect(main(["run", "--fast"])).resolves.toBe(2);
+  });
+
+  it("keeps the beginner path managed", async () => {
+    await expect(main(["start", "--external"])).resolves.toBe(2);
+  });
+
+  it("requires explicit download consent before beginner setup in automation", async () => {
+    const home = await mkdtemp(join(tmpdir(), "hermes-qvac-start-consent-"));
+    const bin = await mkdtemp(join(tmpdir(), "hermes-qvac-start-bin-"));
+    const hermes = join(bin, "hermes");
+    await writeFile(
+      hermes,
+      '#!/usr/bin/env bash\nif [[ "${1:-}" == "--version" ]]; then echo "Hermes Agent v0.19.0"; fi\nexit 0\n',
+      { mode: 0o755 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [resolve("dist/cli.js"), "start", "--model", "qwen3.5-0.8b"],
+      {
+        env: {
+          ...process.env,
+          HOME: home,
+          HERMES_HOME: join(home, ".hermes"),
+          PATH: `${bin}:${process.env.PATH ?? ""}`,
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(4);
+    expect(result.stderr).toContain("Re-run with --yes");
+    await expect(
+      stat(join(home, ".hermes", "plugins", "model-providers", "qvac")),
+    ).rejects.toThrow();
+  });
+
   it("provides command-specific help, version, model info, and non-mutating validation", async () => {
     await expect(
       main(["models", "info", "qwen3.5-9b", "--json"]),
@@ -401,6 +468,37 @@ describe("CLI parsing", () => {
     expect(result.status).toBe(4);
     expect(JSON.parse(await readFile(configPath(env), "utf8"))).toEqual({
       ctxSize: 16384,
+    });
+  });
+
+  it("restores saved configuration when beginner setup fails", async () => {
+    const home = await mkdtemp(join(tmpdir(), "hermes-qvac-start-rollback-"));
+    const bin = await mkdtemp(join(tmpdir(), "hermes-qvac-start-bin-"));
+    const hermesHome = join(home, ".hermes");
+    const env = { HERMES_HOME: hermesHome };
+    await saveConfig({ model: "qwen3.5-4b" }, env);
+    const hermes = join(bin, "hermes");
+    await writeFile(
+      hermes,
+      '#!/usr/bin/env bash\nif [[ "${1:-}" == "--version" ]]; then echo "Hermes Agent v0.19.0"; exit 0; fi\nexit 23\n',
+      { mode: 0o755 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [resolve("dist/cli.js"), "start", "--model", "qwen3.5-0.8b", "--yes"],
+      {
+        env: {
+          ...process.env,
+          HOME: home,
+          HERMES_HOME: hermesHome,
+          PATH: `${bin}:${process.env.PATH ?? ""}`,
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(4);
+    expect(JSON.parse(await readFile(configPath(env), "utf8"))).toEqual({
+      model: "qwen3.5-4b",
     });
   });
 });

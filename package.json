@@ -1,25 +1,26 @@
 {
   "name": "@localhost41/hermes-qvac-provider",
-  "version": "0.1.0-beta.2",
-  "description": "Hermes Agent model-provider plugin for private, local QVAC models",
+  "version": "0.1.0-beta.3",
+  "description": "Community quickstart for running Hermes Agent with private, local QVAC models",
   "keywords": [
     "qvac",
     "hermes-agent",
     "ai-agents",
     "local-ai",
     "model-provider",
+    "quickstart",
     "openai-compatible",
     "privacy"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/localhost41/hermes-qvac-provider.git"
+    "url": "git+https://github.com/localhost41/hermes-qvac-quickstart.git"
   },
   "bugs": {
-    "url": "https://github.com/localhost41/hermes-qvac-provider/issues"
+    "url": "https://github.com/localhost41/hermes-qvac-quickstart/issues"
   },
-  "homepage": "https://github.com/localhost41/hermes-qvac-provider#readme",
+  "homepage": "https://github.com/localhost41/hermes-qvac-quickstart#readme",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -40,12 +41,14 @@
     "docs/compatibility.md",
     "docs/configuration.md",
     "docs/hermes-host-conformance.md",
+    "docs/performance.md",
     "docs/security.md",
     "examples/hermes-qvac-demo.mjs",
     "qvac_provider/__init__.py",
     "scripts/doctor.sh",
     "scripts/install.sh",
     "scripts/start-qvac.sh",
+    "scripts/performance-benchmark.mjs",
     "plugin.yaml",
     "README.md",
     "CONTRIBUTING.md",
@@ -73,13 +76,15 @@
     "verify:acceptance": "node scripts/moderator-acceptance.mjs",
     "verify:artifact": "node scripts/artifact-provenance.mjs",
     "verify:soak": "node scripts/resilience-soak.mjs",
+    "benchmark:performance": "node scripts/performance-benchmark.mjs",
     "smoke:transport": "node dist/cli.js smoke --transport-only"
   },
   "dependencies": {
     "@ai-sdk/openai-compatible": "^2.0.0",
     "@qvac/ai-sdk-provider": "^0.3.0",
     "@qvac/cli": "^0.8.1",
-    "ai": "^6.0.0"
+    "ai": "^6.0.0",
+    "require-asset": "1.2.2"
   },
   "devDependencies": {
     "@types/node": "^26.0.0",
@@ -93,5 +98,13 @@
     "example": "examples",
     "test": "tests"
   },
-  "author": ""
+  "author": "",
+  "optionalDependencies": {
+    "bare-runtime-darwin-arm64": "1.30.3",
+    "bare-runtime-darwin-x64": "1.30.3",
+    "bare-runtime-linux-arm64": "1.30.3",
+    "bare-runtime-linux-x64": "1.30.3",
+    "bare-runtime-win32-arm64": "1.30.3",
+    "bare-runtime-win32-x64": "1.30.3"
+  }
 }

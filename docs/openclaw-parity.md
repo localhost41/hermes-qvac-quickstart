@@ -35,7 +35,7 @@ Snapshot inspected 2026-07-21:
 | `qvacCommand` | `qvacBin`, bundled CLI by default | config/runtime | package, relative path, fake binary tests | doctor | Equivalent | Official manager API names it `serveBinPath` |
 | `cwd` | validated cwd; requires no reuse | config/runtime | spaces/relative binary test | doctor | Equivalent with explicit reuse guard | Upstream fleet key omits cwd |
 | `ctxSize` | per-entry `ctx_size` | config/runtime | golden config | generated config | Equivalent | — |
-| `reasoningBudget` | per-entry `reasoning_budget`, default `-1` | config/runtime | golden config | generated config | Equivalent | — |
+| `reasoningBudget` | per-entry `reasoning_budget`, default `0` | config/runtime | golden config | generated config | Intentional difference | Disabled by default for predictable beginner output; configurable with `--reasoning-budget`. |
 | `tools` | per-entry tool formatting flag | config/runtime | golden config | generated config | Equivalent | — |
 | `readyTimeoutMs` | official `serveStartTimeout` | runtime | delayed readiness/timeout/exit tests | doctor | Equivalent | — |
 | `idleStopMs` | official `serveIdleTimeout` | runtime | consumer cleanup tests | process inspection | Equivalent | — |

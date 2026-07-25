@@ -9,11 +9,26 @@ const changelog = readFileSync("CHANGELOG.md", "utf8");
 const compatibility = readFileSync("docs/compatibility.md", "utf8");
 const configuration = readFileSync("docs/configuration.md", "utf8");
 const releaseReadiness = readFileSync(
-  "docs/beta2-release-readiness.md",
+  "docs/beta3-release-readiness.md",
   "utf8",
 );
 const betaReadiness = readFileSync("docs/beta-readiness-plan.md", "utf8");
 const pythonProvider = readFileSync("qvac_provider/__init__.py", "utf8");
+const typescriptConfig = readFileSync("src/config.ts", "utf8");
+const repositoryUrl =
+  "git+https://github.com/localhost41/hermes-qvac-quickstart.git";
+
+if (packageJson.repository?.url !== repositoryUrl) {
+  throw new Error(`repository URL drifted: ${packageJson.repository?.url}`);
+}
+if (
+  packageJson.bugs?.url !==
+    "https://github.com/localhost41/hermes-qvac-quickstart/issues" ||
+  packageJson.homepage !==
+    "https://github.com/localhost41/hermes-qvac-quickstart#readme"
+) {
+  throw new Error("quickstart support URLs drifted");
+}
 
 function requireMatch(text, pattern, message) {
   if (!pattern.test(text)) throw new Error(message);
@@ -38,6 +53,29 @@ if (!/^## Unreleased\s*$/m.test(changelog)) {
 if (!/^kind:\s*model-provider\s*$/m.test(manifest)) {
   throw new Error("plugin.yaml is not a Hermes model-provider manifest");
 }
+requireMatch(
+  readme,
+  /^# Hermes \+ QVAC Quickstart$/m,
+  "README product title drifted",
+);
+if (!/description: Hermes \+ QVAC Quickstart provider/.test(manifest)) {
+  throw new Error("plugin manifest product description drifted");
+}
+requireMatch(
+  typescriptConfig,
+  /^\s*profile: "full",$/m,
+  "TypeScript default beginner profile drifted",
+);
+requireMatch(
+  manifest,
+  /^\s*profile:\s*\n\s*default:\s*full$/m,
+  "manifest default beginner profile drifted",
+);
+requireMatch(
+  readme,
+  /Use `start --full` to restore 9B\/32K and normal Hermes tools/,
+  "README fast/full profile guidance drifted",
+);
 
 const supportedNode = "22, 24, 26";
 if (packageJson.engines?.node !== ">=22 <27") {
