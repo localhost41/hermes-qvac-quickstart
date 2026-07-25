@@ -15,12 +15,12 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/localhost41/hermes-qvac-provider.git"
+    "url": "git+https://github.com/localhost41/hermes-qvac-quickstart.git"
   },
   "bugs": {
-    "url": "https://github.com/localhost41/hermes-qvac-provider/issues"
+    "url": "https://github.com/localhost41/hermes-qvac-quickstart/issues"
   },
-  "homepage": "https://github.com/localhost41/hermes-qvac-provider#readme",
+  "homepage": "https://github.com/localhost41/hermes-qvac-quickstart#readme",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

@@ -15,6 +15,20 @@ const releaseReadiness = readFileSync(
 const betaReadiness = readFileSync("docs/beta-readiness-plan.md", "utf8");
 const pythonProvider = readFileSync("qvac_provider/__init__.py", "utf8");
 const typescriptConfig = readFileSync("src/config.ts", "utf8");
+const repositoryUrl =
+  "git+https://github.com/localhost41/hermes-qvac-quickstart.git";
+
+if (packageJson.repository?.url !== repositoryUrl) {
+  throw new Error(`repository URL drifted: ${packageJson.repository?.url}`);
+}
+if (
+  packageJson.bugs?.url !==
+    "https://github.com/localhost41/hermes-qvac-quickstart/issues" ||
+  packageJson.homepage !==
+    "https://github.com/localhost41/hermes-qvac-quickstart#readme"
+) {
+  throw new Error("quickstart support URLs drifted");
+}
 
 function requireMatch(text, pattern, message) {
   if (!pattern.test(text)) throw new Error(message);

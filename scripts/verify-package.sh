@@ -255,6 +255,8 @@ if [[ ! -f "$CLI_START_HOME/plugins/model-providers/qvac/.hermes-qvac-provider.j
   echo "Packed beginner start did not install its owned provider" >&2
   exit 1
 fi
+# The template expression belongs to the single-quoted JavaScript program.
+# shellcheck disable=SC2016
 node -e '
 const fs = require("fs");
 const config = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
