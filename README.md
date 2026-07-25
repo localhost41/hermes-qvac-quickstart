@@ -29,7 +29,7 @@ endorsement by either project.
 ## Install
 
 For a new local setup, install Hermes using its current official instructions,
-then run one command:
+install this package, then use one integration command:
 
 ```bash
 npm install -g @localhost41/hermes-qvac-provider@beta
@@ -39,8 +39,17 @@ hermes-qvac start
 `start` checks available disk, shows the selected models and estimated download,
 asks before downloading anything, safely installs or upgrades the provider,
 starts QVAC on loopback, waits for it to become ready, and opens Hermes. On
-later runs it reuses cached models and repeats the safe installation check.
+later runs it remembers explicit configuration choices, reuses cached models,
+and repeats the safe installation check.
 Non-interactive automation must pass `--yes` to approve a required download.
+
+The default 9B model follows QVAC's current local-agent guidance, but local
+inference is hardware-dependent. In a 2026-07-25 review on a 16 GiB Apple
+silicon Mac, two cached-model exact-response runs took about 2.5–3 minutes
+after readiness. That is a measured data point, not a guaranteed benchmark.
+For a lighter first trial, `hermes-qvac start --model qwen3.5-4b` uses QVAC's
+smaller agent candidate; expect lower tool reliability than the default. The
+0.8B model is intended only for connectivity checks, not agent work.
 
 `setup` atomically copies the minimal Python assets into `$HERMES_HOME/plugins/model-providers/qvac` and enables the plugin through Hermes. It supports upgrades from owned and recognized earlier alpha installations, refuses unrelated directories, and never downloads a model.
 

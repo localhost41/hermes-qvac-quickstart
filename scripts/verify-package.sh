@@ -248,6 +248,13 @@ if [[ ! -f "$CLI_START_HOME/plugins/model-providers/qvac/.hermes-qvac-provider.j
   echo "Packed beginner start did not install its owned provider" >&2
   exit 1
 fi
+node -e '
+const fs = require("fs");
+const config = JSON.parse(fs.readFileSync(process.argv[1], "utf8"));
+if (config.model !== "qwen3.5-4b" || config.reuse !== false) {
+  throw new Error(`Beginner start did not persist explicit choices: ${JSON.stringify(config)}`);
+}
+' "$CLI_START_HOME/hermes-qvac/config.json"
 
 (
   cd "$CONSUMER_DIR"

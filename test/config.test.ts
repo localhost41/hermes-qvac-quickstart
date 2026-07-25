@@ -452,4 +452,35 @@ describe("CLI parsing", () => {
       ctxSize: 16384,
     });
   });
+
+  it("restores saved configuration when beginner setup fails", async () => {
+    const home = await mkdtemp(join(tmpdir(), "hermes-qvac-start-rollback-"));
+    const bin = await mkdtemp(join(tmpdir(), "hermes-qvac-start-bin-"));
+    const hermesHome = join(home, ".hermes");
+    const env = { HERMES_HOME: hermesHome };
+    await saveConfig({ model: "qwen3.5-4b" }, env);
+    const hermes = join(bin, "hermes");
+    await writeFile(
+      hermes,
+      '#!/usr/bin/env bash\nif [[ "${1:-}" == "--version" ]]; then echo "Hermes Agent v0.19.0"; exit 0; fi\nexit 23\n',
+      { mode: 0o755 },
+    );
+    const result = spawnSync(
+      process.execPath,
+      [resolve("dist/cli.js"), "start", "--model", "qwen3.5-0.8b", "--yes"],
+      {
+        env: {
+          ...process.env,
+          HOME: home,
+          HERMES_HOME: hermesHome,
+          PATH: `${bin}:${process.env.PATH ?? ""}`,
+        },
+        encoding: "utf8",
+      },
+    );
+    expect(result.status).toBe(4);
+    expect(JSON.parse(await readFile(configPath(env), "utf8"))).toEqual({
+      model: "qwen3.5-4b",
+    });
+  });
 });

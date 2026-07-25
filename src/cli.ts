@@ -772,7 +772,27 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         storage.requiredDownloadBytes,
         parsed.yes,
       );
-      const installed = await setupPlugin();
+      const changesConfig = hasConfigOverrides(parsed.config);
+      const priorConfig = changesConfig ? await readSavedConfig() : undefined;
+      if (changesConfig) await saveConfig(parsed.config);
+      let installed: Awaited<ReturnType<typeof setupPlugin>>;
+      try {
+        installed = await setupPlugin();
+      } catch (error) {
+        if (priorConfig) {
+          try {
+            await resetConfig();
+            if (Object.keys(priorConfig).length > 0)
+              await saveConfig(priorConfig);
+          } catch (restoreError) {
+            throw new AggregateError(
+              [error, restoreError],
+              "Beginner setup failed and the previous saved configuration could not be restored",
+            );
+          }
+        }
+        throw error;
+      }
       stderr.write(
         `QVAC provider ${installed.upgraded ? "upgraded" : "installed"}. ${beginnerCapacityMessage(config)}\nStarting QVAC; the first model load may take several minutes...\n`,
       );
