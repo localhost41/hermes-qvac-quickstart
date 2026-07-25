@@ -17,6 +17,8 @@ Current recommendation: **GO AS BETA WITH EXPLICIT UPSTREAM LIMITATIONS**.
 - Packed macOS acceptance passed isolated install, copied setup, Hermes discovery, doctor, real OpenAI-compatible transport, idempotent upgrade, owned uninstall, and cleanup without using the source checkout at runtime.
 - The frozen beta.2 tarball contains 25 files, is 48,796 bytes packed and 179,055 bytes unpacked, and has SHA-256 `e6805136e10922f1256a3ec5e16b4e76e954a1d5ee93abcff8aa6c7b524d93be`.
 - The reproducible CycloneDX 1.6 beta.2 SBOM contains 272 components and has SHA-256 `30fdfd5895e31326836bacadd8b72b8fa92729b581cade59d497e240dc87c5ea`.
+- Trusted publication completed from `v0.1.0-beta.2`. The registry exposes beta.2 only through the `beta` dist-tag, retains `latest` at 0.1.0-alpha.1, and records SLSA provenance.
+- npm's Linux publisher produced archive SHA-256 `5abc37b3e2547257a4e921a22ca4654afac1b709a7ad62adbc1220065345ed1c` (`shasum` `7db978f80f165fa06cd49481a689478e7cb59362`). Its 25 extracted files are byte-identical to the reviewed macOS rehearsal archive; the archive-level difference is tar metadata, not package content.
 
 ## Explicit limitations
 
@@ -26,4 +28,4 @@ Current recommendation: **GO AS BETA WITH EXPLICIT UPSTREAM LIMITATIONS**.
 - QVAC #3384 and #3225 remain upstream termination limitations.
 - Model quality is not protocol correctness; 9B is the outcome-verified tool recommendation and smaller models have explicit capability warnings.
 
-The beta workflow is manual, requires the protected npm environment, verifies a beta version, publishes only under the `beta` dist-tag with provenance, and does not change `latest`. No publication, tag, merge, or endorsement is performed by this report.
+The beta workflow is manual, requires the protected npm environment, verifies a beta version, publishes only under the `beta` dist-tag with provenance, and does not change `latest`. Publication is a community release and does not imply Hermes or QVAC endorsement.

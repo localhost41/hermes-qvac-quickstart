@@ -40,6 +40,12 @@ graph. It contains 272 components and has SHA-256
 The beta.2 tarball contains 25 files, is 48,796 bytes packed and 179,055 bytes
 unpacked, and has SHA-256
 `e6805136e10922f1256a3ec5e16b4e76e954a1d5ee93abcff8aa6c7b524d93be`.
+The npm registry's Linux-packed archive has SHA-256
+`5abc37b3e2547257a4e921a22ca4654afac1b709a7ad62adbc1220065345ed1c`
+and npm shasum `7db978f80f165fa06cd49481a689478e7cb59362`. A recursive
+comparison confirms that all 25 extracted files are byte-identical to the
+reviewed macOS rehearsal; the archive-level checksum difference comes from tar
+metadata. The registry records SLSA provenance for the published beta.2.
 
 The protected prerelease publish workflow is manual, accepts an explicit ref,
 targets the `npm-publish` environment, requires an alpha or beta version,
